@@ -3,7 +3,7 @@ import google.generativeai as genai
 import snowflake.connector
 
 # Configure the Generative AI model
-genai.configure(api_key='AIzaSyAHUVD4ZzBqTOww00ES-ZNyByT4wXcmf14')   
+genai.configure(api_key='AIzaSyAHUVD4ZzBqTOww00ES-ZNyByT4wXcmf14')
 model = genai.GenerativeModel(model_name="gemini-1.5-pro-001")
 
 # Define the initial part of the prompt for Generative AI
@@ -153,95 +153,121 @@ def call_procedure(proc_name, *params):
 
 # Example Oracle procedure
 oracle_procedure = """
-CREATE OR REPLACE PROCEDURE integrate_products_data IS
-    CURSOR products_cursor IS
-        SELECT product_id, product_name, category, price, stock_quantity
-        FROM products_staging;
+CREATE OR REPLACE PROCEDURE manage_employee_data_complex IS
+    -- Cursors for fetching employee and department data
+    CURSOR emp_cursor IS
+        SELECT employee_id, department_id, salary, hire_date
+        FROM employee
+        WHERE hire_date > SYSDATE - 365;  -- Employees hired in the past year
 
-    v_product_id products_staging.product_id%TYPE;
-    v_product_name products_staging.product_name%TYPE;
-    v_category products_staging.category%TYPE;
-    v_price products_staging.price%TYPE;
-    v_stock_quantity products_staging.stock_quantity%TYPE;
+    CURSOR dept_cursor IS
+        SELECT department_id, COUNT(*) AS employee_count, AVG(salary) AS avg_salary
+        FROM employee
+        GROUP BY department_id;
 
-    v_product_exists NUMBER;
+    -- Variables for processing
+    v_employee_id NUMBER;
+    v_department_id NUMBER;
+    v_salary NUMBER;
+    v_hire_date DATE;
+    v_employee_count NUMBER;
+    v_avg_salary NUMBER;
+    
+    -- Dynamic SQL strings
+    v_create_table_sql VARCHAR2(500);
+    v_insert_sql VARCHAR2(500);
 
-    ex_invalid_data EXCEPTION;
-    PRAGMA EXCEPTION_INIT(ex_invalid_data, -20001);
-
-    PROCEDURE validate_data IS
-    BEGIN
-        -- Validate product data
-        IF v_product_id IS NULL OR v_product_name IS NULL OR v_category IS NULL OR v_price IS NULL OR v_stock_quantity IS NULL THEN
-            RAISE ex_invalid_data;
-        END IF;
-
-        -- Check if the product already exists
-        SELECT COUNT(*)
-        INTO v_product_exists
-        FROM products
-        WHERE product_id = v_product_id;
-
-        IF v_product_exists = 0 THEN
-            RAISE ex_invalid_data;
-        END IF;
-    END validate_data;
-
-    PROCEDURE log_error(p_product_id IN NUMBER, p_message IN VARCHAR2) IS
-    BEGIN
-        INSERT INTO error_log (error_date, product_id, error_message)
-        VALUES (SYSDATE, p_product_id, p_message);
-        COMMIT;
-    END log_error;
+    -- Exception Handling
+    e_table_exists EXCEPTION;
+    e_invalid_data EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_table_exists, -955);
+    PRAGMA EXCEPTION_INIT(e_invalid_data, -20001);
 
 BEGIN
-    OPEN products_cursor;
-    LOOP
-        FETCH products_cursor INTO v_product_id, v_product_name, v_category, v_price, v_stock_quantity;
-        EXIT WHEN products_cursor%NOTFOUND;
+    -- Drop existing tables if they exist
+    BEGIN
+        EXECUTE IMMEDIATE 'DROP TABLE employee_summary';
+        EXECUTE IMMEDIATE 'DROP TABLE department_summary';
+    EXCEPTION
+        WHEN e_table_exists THEN
+            NULL; -- Ignore if the table does not exist
+    END;
 
+    -- Create tables
+    v_create_table_sql := 'CREATE TABLE employee_summary (
+                               employee_id NUMBER,
+                               department_id NUMBER,
+                               salary NUMBER,
+                               hire_date DATE
+                           )';
+    EXECUTE IMMEDIATE v_create_table_sql;
+
+    v_create_table_sql := 'CREATE TABLE department_summary (
+                               department_id NUMBER,
+                               employee_count NUMBER,
+                               avg_salary NUMBER
+                           )';
+    EXECUTE IMMEDIATE v_create_table_sql;
+
+    -- Process employees
+    FOR emp_record IN emp_cursor LOOP
         BEGIN
-            -- Validate data
-            validate_data;
+            v_employee_id := emp_record.employee_id;
+            v_department_id := emp_record.department_id;
+            v_salary := emp_record.salary;
+            v_hire_date := emp_record.hire_date;
 
-            -- Insert or update product record
-            MERGE INTO products p
-            USING (SELECT v_product_id AS product_id,
-                          v_product_name AS product_name,
-                          v_category AS category,
-                          v_price AS price,
-                          v_stock_quantity AS stock_quantity
-                   FROM dual) s
-            ON (p.product_id = s.product_id)
-            WHEN MATCHED THEN
-                UPDATE SET p.product_name = s.product_name,
-                           p.category = s.category,
-                           p.price = s.price,
-                           p.stock_quantity = s.stock_quantity
-            WHEN NOT MATCHED THEN
-                INSERT (product_id, product_name, category, price, stock_quantity)
-                VALUES (s.product_id, s.product_name, s.category, s.price, s.stock_quantity);
+            -- Insert into employee_summary
+            v_insert_sql := 'INSERT INTO employee_summary (employee_id, department_id, salary, hire_date)
+                             VALUES (:1, :2, :3, :4)';
+            EXECUTE IMMEDIATE v_insert_sql USING v_employee_id, v_department_id, v_salary, v_hire_date;
 
+            -- Log progress
+            DBMS_OUTPUT.PUT_LINE('Inserted employee ' || v_employee_id || ' into employee_summary.');
         EXCEPTION
-            WHEN ex_invalid_data THEN
-                log_error(v_product_id, 'Invalid product data');
             WHEN OTHERS THEN
-                log_error(v_product_id, SQLERRM);
+                DBMS_OUTPUT.PUT_LINE('Error inserting employee ' || v_employee_id || ': ' || SQLERRM);
         END;
     END LOOP;
-    CLOSE products_cursor;
 
+    -- Process departments
+    FOR dept_record IN dept_cursor LOOP
+        BEGIN
+            v_department_id := dept_record.department_id;
+            v_employee_count := dept_record.employee_count;
+            v_avg_salary := dept_record.avg_salary;
+
+            -- Insert into department_summary
+            v_insert_sql := 'INSERT INTO department_summary (department_id, employee_count, avg_salary)
+                             VALUES (:1, :2, :3)';
+            EXECUTE IMMEDIATE v_insert_sql USING v_department_id, v_employee_count, v_avg_salary;
+
+            -- Log progress
+            DBMS_OUTPUT.PUT_LINE('Inserted department ' || v_department_id || ' into department_summary.');
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Error inserting department ' || v_department_id || ': ' || SQLERRM);
+        END;
+    END LOOP;
+
+    -- Commit the transaction
     COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Procedure executed successfully.');
+
 EXCEPTION
+    WHEN e_invalid_data THEN
+        DBMS_OUTPUT.PUT_LINE('Invalid data encountered.');
     WHEN OTHERS THEN
-        ROLLBACK;
         DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
-END integrate_products_data;
+        RAISE;
+END;
+/
 """
 
 # Convert Oracle procedure to Snowflake procedure
 try:
     snowflake_procedure = convert_oracle_procedure(oracle_procedure)
+    # Print the Snowflake SQL query only once
     print("Snowflake SQL Query:")
     print(snowflake_procedure)
 except ValueError as e:
@@ -266,7 +292,6 @@ else:
     print("Snowflake procedure was not generated successfully.")
 
 # Example call to the Snowflake stored procedure
-
 
 # Close the cursor and connection
 cur.close()
