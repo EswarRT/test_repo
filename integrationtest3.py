@@ -3,7 +3,7 @@ import google.generativeai as genai
 import snowflake.connector
 
 # Configure the Generative AI model
-genai.configure(api_key='AIzaSyAHUVD4ZzBqTOww00ES-ZNyByT4wXcmf14')
+genai.configure(api_key='AIzaSyCqwFedZfvnT90Oe37_dZZShdf0JRmDYck')
 model = genai.GenerativeModel(model_name="gemini-1.5-pro-001")
 
 # Define the initial part of the prompt for Generative AI

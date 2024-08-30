@@ -315,7 +315,7 @@ print(snowflake_procedure)
 conn = snowflake.connector.connect(
     user='ESWARMANIKANTA',
     password='Eswar@7185',
-    account='hd90197.europe-west4.gcp',
+    account='pt90021.europe-west4.gcp',
     warehouse='COMPUTE_WH',
     database='PUBLIC',
     schema='PUBLIC'

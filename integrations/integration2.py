@@ -1,6 +1,6 @@
 import re
 import google.generativeai as genai
-import snowflake.connector
+
 
 # Configure the Generative AI model
 genai.configure(api_key='AIzaSyCqwFedZfvnT90Oe37_dZZShdf0JRmDYck')
@@ -79,6 +79,7 @@ I will provide you with a Oracle Query. Please convert it to Snowflake SQL Query
 * The output should be enclosed within triple quotes (""" """).
 * Print the output only once.
 * There is no need to include oracle query in the Snowflake query even in the comments.
+* The executed code must provide the output once only instead of repeating twice
 """
 
 def convert_oracle_to_snowflake_with_ai(oracle_query):
@@ -125,31 +126,6 @@ def convert_oracle_procedure(oracle_procedure):
 
     return final_converted_code
 
-def execute_sql(command):
-    """
-    Execute SQL command on Snowflake.
-    """
-    try:
-        cur.execute(command)
-        print(f"Executed: {command}")
-    except Exception as e:
-        print(f"Error executing {command}: {e}")
-
-def call_procedure(proc_name, *params):
-    """
-    Call Snowflake stored procedure with parameters.
-    """
-    placeholders = ', '.join(['%s'] * len(params))
-    sql_command = f"CALL {proc_name}({placeholders})"
-    try:
-        cur.execute(sql_command, params)
-        result = cur.fetchone()
-        if result:
-            print(f"Procedure executed successfully: {result[0]}")
-        else:
-            print("Procedure executed successfully with no return value.")
-    except Exception as e:
-        print(f"Error executing procedure: {e}")
 
 # Example Oracle procedure
 oracle_procedure = """
@@ -272,30 +248,4 @@ try:
 except ValueError as e:
     print(e)
 
-# Connect to Snowflake
-conn = snowflake.connector.connect(
-    user='ESWARMANIKANTA',
-    password='Eswar@7185',
-    account='pt90021.europe-west4.gcp',
-    warehouse='COMPUTE_WH',
-    database='PUBLIC',
-    schema='PUBLIC'
-)
-
-cur = conn.cursor()
-
-# Execute the converted Snowflake procedure
-if 'snowflake_procedure' in locals():
-    execute_sql(snowflake_procedure)
-else:
-    print("Snowflake procedure was not generated successfully.")
-
-# Example call to the Snowflake stored procedure
-
-
-# Close the cursor and connection
-cur.close()
-conn.close()
-
-
-# snowflake conection unna daniki sql error vastundi
+# snowflake conection lenidi 

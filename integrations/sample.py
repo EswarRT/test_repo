@@ -1,6 +1,6 @@
 import re
 import google.generativeai as genai
-import snowflake.connector
+
 
 # Configure the Generative AI model
 genai.configure(api_key='AIzaSyCqwFedZfvnT90Oe37_dZZShdf0JRmDYck')
@@ -79,6 +79,7 @@ I will provide you with a Oracle Query. Please convert it to Snowflake SQL Query
 * The output should be enclosed within triple quotes (""" """).
 * Print the output only once.
 * There is no need to include oracle query in the Snowflake query even in the comments.
+* The executed code must provide the output once only instead of repeating twice
 """
 
 def convert_oracle_to_snowflake_with_ai(oracle_query):
@@ -125,145 +126,24 @@ def convert_oracle_procedure(oracle_procedure):
 
     return final_converted_code
 
-def execute_sql(command):
-    """
-    Execute SQL command on Snowflake.
-    """
-    try:
-        cur.execute(command)
-        print(f"Executed: {command}")
-    except Exception as e:
-        print(f"Error executing {command}: {e}")
-
-def call_procedure(proc_name, *params):
-    """
-    Call Snowflake stored procedure with parameters.
-    """
-    placeholders = ', '.join(['%s'] * len(params))
-    sql_command = f"CALL {proc_name}({placeholders})"
-    try:
-        cur.execute(sql_command, params)
-        result = cur.fetchone()
-        if result:
-            print(f"Procedure executed successfully: {result[0]}")
-        else:
-            print("Procedure executed successfully with no return value.")
-    except Exception as e:
-        print(f"Error executing procedure: {e}")
 
 # Example Oracle procedure
 oracle_procedure = """
-CREATE OR REPLACE PROCEDURE manage_employee_data_complex IS
-    -- Cursors for fetching employee and department data
-    CURSOR emp_cursor IS
-        SELECT employee_id, department_id, salary, hire_date
-        FROM employee
-        WHERE hire_date > SYSDATE - 365;  -- Employees hired in the past year
-
-    CURSOR dept_cursor IS
-        SELECT department_id, COUNT(*) AS employee_count, AVG(salary) AS avg_salary
-        FROM employee
-        GROUP BY department_id;
-
-    -- Variables for processing
-    v_employee_id NUMBER;
-    v_department_id NUMBER;
-    v_salary NUMBER;
-    v_hire_date DATE;
-    v_employee_count NUMBER;
-    v_avg_salary NUMBER;
-    
-    -- Dynamic SQL strings
-    v_create_table_sql VARCHAR2(500);
-    v_insert_sql VARCHAR2(500);
-
-    -- Exception Handling
-    e_table_exists EXCEPTION;
-    e_invalid_data EXCEPTION;
-    PRAGMA EXCEPTION_INIT(e_table_exists, -955);
-    PRAGMA EXCEPTION_INIT(e_invalid_data, -20001);
-
+CREATE OR REPLACE PROCEDURE add_employee (
+    p_employee_id   IN employee.employee_id%TYPE,
+    p_first_name    IN employee.first_name%TYPE,
+    p_last_name     IN employee.last_name%TYPE,
+    p_department_id IN employee.department_id%TYPE,
+    p_salary        IN employee.salary%TYPE,
+    p_hiredate      IN employee.hiredate%TYPE
+)
+IS
 BEGIN
-    -- Drop existing tables if they exist
-    BEGIN
-        EXECUTE IMMEDIATE 'DROP TABLE employee_summary';
-        EXECUTE IMMEDIATE 'DROP TABLE department_summary';
-    EXCEPTION
-        WHEN e_table_exists THEN
-            NULL; -- Ignore if the table does not exist
-    END;
+    INSERT INTO employee (employee_id, first_name, last_name, department_id, salary, hiredate)
+    VALUES (p_employee_id, p_first_name, p_last_name, p_department_id, p_salary, p_hiredate);
+END add_employee;
 
-    -- Create tables
-    v_create_table_sql := 'CREATE TABLE employee_summary (
-                               employee_id NUMBER,
-                               department_id NUMBER,
-                               salary NUMBER,
-                               hire_date DATE
-                           )';
-    EXECUTE IMMEDIATE v_create_table_sql;
-
-    v_create_table_sql := 'CREATE TABLE department_summary (
-                               department_id NUMBER,
-                               employee_count NUMBER,
-                               avg_salary NUMBER
-                           )';
-    EXECUTE IMMEDIATE v_create_table_sql;
-
-    -- Process employees
-    FOR emp_record IN emp_cursor LOOP
-        BEGIN
-            v_employee_id := emp_record.employee_id;
-            v_department_id := emp_record.department_id;
-            v_salary := emp_record.salary;
-            v_hire_date := emp_record.hire_date;
-
-            -- Insert into employee_summary
-            v_insert_sql := 'INSERT INTO employee_summary (employee_id, department_id, salary, hire_date)
-                             VALUES (:1, :2, :3, :4)';
-            EXECUTE IMMEDIATE v_insert_sql USING v_employee_id, v_department_id, v_salary, v_hire_date;
-
-            -- Log progress
-            DBMS_OUTPUT.PUT_LINE('Inserted employee ' || v_employee_id || ' into employee_summary.');
-        EXCEPTION
-            WHEN OTHERS THEN
-                DBMS_OUTPUT.PUT_LINE('Error inserting employee ' || v_employee_id || ': ' || SQLERRM);
-        END;
-    END LOOP;
-
-    -- Process departments
-    FOR dept_record IN dept_cursor LOOP
-        BEGIN
-            v_department_id := dept_record.department_id;
-            v_employee_count := dept_record.employee_count;
-            v_avg_salary := dept_record.avg_salary;
-
-            -- Insert into department_summary
-            v_insert_sql := 'INSERT INTO department_summary (department_id, employee_count, avg_salary)
-                             VALUES (:1, :2, :3)';
-            EXECUTE IMMEDIATE v_insert_sql USING v_department_id, v_employee_count, v_avg_salary;
-
-            -- Log progress
-            DBMS_OUTPUT.PUT_LINE('Inserted department ' || v_department_id || ' into department_summary.');
-        EXCEPTION
-            WHEN OTHERS THEN
-                DBMS_OUTPUT.PUT_LINE('Error inserting department ' || v_department_id || ': ' || SQLERRM);
-        END;
-    END LOOP;
-
-    -- Commit the transaction
-    COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Procedure executed successfully.');
-
-EXCEPTION
-    WHEN e_invalid_data THEN
-        DBMS_OUTPUT.PUT_LINE('Invalid data encountered.');
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
-        RAISE;
-END;
-/
 """
-
 # Convert Oracle procedure to Snowflake procedure
 try:
     snowflake_procedure = convert_oracle_procedure(oracle_procedure)
@@ -271,31 +151,3 @@ try:
     print(snowflake_procedure)
 except ValueError as e:
     print(e)
-
-# Connect to Snowflake
-conn = snowflake.connector.connect(
-    user='ESWARMANIKANTA',
-    password='Eswar@7185',
-    account='pt90021.europe-west4.gcp',
-    warehouse='COMPUTE_WH',
-    database='PUBLIC',
-    schema='PUBLIC'
-)
-
-cur = conn.cursor()
-
-# Execute the converted Snowflake procedure
-if 'snowflake_procedure' in locals():
-    execute_sql(snowflake_procedure)
-else:
-    print("Snowflake procedure was not generated successfully.")
-
-# Example call to the Snowflake stored procedure
-
-
-# Close the cursor and connection
-cur.close()
-conn.close()
-
-
-# snowflake conection unna daniki sql error vastundi
