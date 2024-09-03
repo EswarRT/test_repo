@@ -129,136 +129,106 @@ def convert_oracle_procedure(oracle_procedure):
 
 # Example Oracle procedure
 oracle_procedure = """
-CREATE OR REPLACE PROCEDURE manage_employee (
-    p_action         IN VARCHAR2,
-    p_employee_id    IN NUMBER DEFAULT NULL,
-    p_first_name     IN VARCHAR2 DEFAULT NULL,
-    p_last_name      IN VARCHAR2 DEFAULT NULL,
-    p_department_id  IN NUMBER DEFAULT NULL,
-    p_salary         IN NUMBER DEFAULT NULL,
-    p_hire_date      IN DATE DEFAULT NULL
-)
-IS
-    -- Declare a local variable to hold the cursor result
-    CURSOR emp_cursor IS
-        SELECT employee_id, first_name, last_name, department_id, salary, hire_date
-        FROM employee
-        WHERE employee_id = p_employee_id;
+CREATE OR REPLACE PROCEDURE complex_supply_chain_analysis
+AS
+    -- Define variables to hold intermediate results
+    total_revenue NUMBER;
+    avg_lead_time NUMBER;
+    high_demand_sku VARCHAR2(50);
+    high_demand_count NUMBER := 0;  -- Initialize high_demand_count to zero
+    low_stock_sku VARCHAR2(50);
+    low_stock_level NUMBER := 9999999;  -- Initialize to a high value
+    v_product_type VARCHAR2(26);
+    v_sku VARCHAR2(26);
+    v_price NUMBER(38,16);
+    v_availability NUMBER(38,0);
+    v_number_of_products_sold NUMBER(38,0);
+    v_revenue_generated NUMBER(38,13);
+    v_customer_demographics VARCHAR2(26);
+    v_stock_levels NUMBER(38,0);
+    v_lead_times NUMBER(38,0);
+    v_order_quantities NUMBER(38,0);
+    v_shipping_times NUMBER(38,0);
+    v_shipping_carriers VARCHAR2(26);
+    v_shipping_costs NUMBER(38,16);
+    v_supplier_name VARCHAR2(26);
+    v_location VARCHAR2(26);
+    v_lead_time NUMBER(38,0);
+    v_production_volumes NUMBER(38,0);
+    v_manufacturing_lead_time NUMBER(38,0);
+    v_manufacturing_costs NUMBER(38,16);
+    v_inspection_results VARCHAR2(26);
+    v_defect_rates NUMBER(38,17);
+    v_transportation_modes VARCHAR2(26);
+    v_routes VARCHAR2(26);
+    v_costs NUMBER(38,14);
+    
+    -- Define a cursor for iteration
+    CURSOR supply_chain_cursor IS
+        SELECT PRODUCT_TYPE, SKU, PRICE, AVAILABILITY, NUMBER_OF_PRODUCTS_SOLD, REVENUE_GENERATED,
+               CUSTOMER_DEMOGRAPHICS, STOCK_LEVELS, LEAD_TIMES, ORDER_QUANTITIES, SHIPPING_TIMES,
+               SHIPPING_CARRIERS, SHIPPING_COSTS, SUPPLIER_NAME, LOCATION, LEAD_TIME, PRODUCTION_VOLUMES,
+               MANUFACTURING_LEAD_TIME, MANUFACTURING_COSTS, INSPECTION_RESULTS, DEFECT_RATES, 
+               TRANSPORTATION_MODES, ROUTES, COSTS
+        FROM supply_chain_data;
 
-    v_emp_record emp_cursor%ROWTYPE;
-    
-    -- Declare a variable to hold the dynamic SQL
-    v_sql VARCHAR2(4000);
-    
-    -- Exception handling variables
-    e_no_data_found EXCEPTION;
-    e_invalid_action EXCEPTION;
-    e_invalid_salary EXCEPTION;
-    
 BEGIN
-    -- Start transaction
-    SAVEPOINT sp_manage_employee;
-    
-    -- Action-based processing
-    CASE p_action
-        WHEN 'INSERT' THEN
-            -- Validate inputs
-            IF p_first_name IS NULL OR p_last_name IS NULL OR p_department_id IS NULL OR p_salary IS NULL OR p_hire_date IS NULL THEN
-                RAISE_APPLICATION_ERROR(-20001, 'All parameters must be provided for INSERT.');
-            END IF;
-            
-            -- Check if employee_id already exists
-            OPEN emp_cursor;
-            FETCH emp_cursor INTO v_emp_record;
-            IF emp_cursor%FOUND THEN
-                RAISE_APPLICATION_ERROR(-20002, 'Employee with this ID already exists.');
-            END IF;
-            CLOSE emp_cursor;
-            
-            -- Insert new employee
-            INSERT INTO employee (employee_id, first_name, last_name, department_id, salary, hire_date)
-            VALUES (p_employee_id, p_first_name, p_last_name, p_department_id, p_salary, p_hire_date);
+    -- Initialize variables
+    total_revenue := 0;
+    avg_lead_time := 0;
+
+    -- Open the cursor
+    OPEN supply_chain_cursor;
+
+    LOOP
+        FETCH supply_chain_cursor INTO v_product_type, v_sku, v_price, v_availability, v_number_of_products_sold, v_revenue_generated,
+                                       v_customer_demographics, v_stock_levels, v_lead_times, v_order_quantities, v_shipping_times,
+                                       v_shipping_carriers, v_shipping_costs, v_supplier_name, v_location, v_lead_time, v_production_volumes,
+                                       v_manufacturing_lead_time, v_manufacturing_costs, v_inspection_results, v_defect_rates,
+                                       v_transportation_modes, v_routes, v_costs;
         
-        WHEN 'UPDATE' THEN
-            -- Validate inputs
-            IF p_employee_id IS NULL THEN
-                RAISE_APPLICATION_ERROR(-20003, 'Employee ID must be provided for UPDATE.');
-            END IF;
-            
-            -- Check if employee exists
-            OPEN emp_cursor;
-            FETCH emp_cursor INTO v_emp_record;
-            IF NOT emp_cursor%FOUND THEN
-                RAISE_APPLICATION_ERROR(-20004, 'Employee with this ID does not exist.');
-            END IF;
-            CLOSE emp_cursor;
-            
-            -- Update employee record
-            v_sql := 'UPDATE employee SET first_name = :1, last_name = :2, department_id = :3, salary = :4, hire_date = :5 WHERE employee_id = :6';
-            EXECUTE IMMEDIATE v_sql USING p_first_name, p_last_name, p_department_id, p_salary, p_hire_date, p_employee_id;
-        
-        WHEN 'DELETE' THEN
-            -- Validate inputs
-            IF p_employee_id IS NULL THEN
-                RAISE_APPLICATION_ERROR(-20005, 'Employee ID must be provided for DELETE.');
-            END IF;
-            
-            -- Check if employee exists
-            OPEN emp_cursor;
-            FETCH emp_cursor INTO v_emp_record;
-            IF NOT emp_cursor%FOUND THEN
-                RAISE_APPLICATION_ERROR(-20006, 'Employee with this ID does not exist.');
-            END IF;
-            CLOSE emp_cursor;
-            
-            -- Delete employee record
-            DELETE FROM employee WHERE employee_id = p_employee_id;
-        
-        WHEN 'RETRIEVE' THEN
-            -- Retrieve employee details
-            OPEN emp_cursor;
-            FETCH emp_cursor INTO v_emp_record;
-            IF emp_cursor%FOUND THEN
-                DBMS_OUTPUT.PUT_LINE('Employee ID: ' || v_emp_record.employee_id);
-                DBMS_OUTPUT.PUT_LINE('First Name: ' || v_emp_record.first_name);
-                DBMS_OUTPUT.PUT_LINE('Last Name: ' || v_emp_record.last_name);
-                DBMS_OUTPUT.PUT_LINE('Department ID: ' || v_emp_record.department_id);
-                DBMS_OUTPUT.PUT_LINE('Salary: ' || v_emp_record.salary);
-                DBMS_OUTPUT.PUT_LINE('Hire Date: ' || TO_CHAR(v_emp_record.hire_date, 'YYYY-MM-DD'));
-            ELSE
-                DBMS_OUTPUT.PUT_LINE('No employee found with ID ' || p_employee_id);
-            END IF;
-            CLOSE emp_cursor;
-        
-        ELSE
-            RAISE e_invalid_action;
-    END CASE;
-    
-    -- Commit the transaction
-    COMMIT;
-    
+        EXIT WHEN supply_chain_cursor%NOTFOUND;
+
+        -- Complex calculations
+        total_revenue := total_revenue + v_revenue_generated;
+        avg_lead_time := avg_lead_time + v_lead_times;
+
+        -- Example of conditional logic and data manipulation
+        IF v_number_of_products_sold > high_demand_count THEN
+            high_demand_sku := v_sku;
+            high_demand_count := v_number_of_products_sold;
+        END IF;
+
+        IF v_stock_levels < low_stock_level THEN
+            low_stock_sku := v_sku;
+            low_stock_level := v_stock_levels;
+        END IF;
+
+        -- Additional complex logic can be added here
+
+    END LOOP;
+
+    -- Final calculations
+    SELECT avg_lead_time / COUNT(*)
+    INTO avg_lead_time
+    FROM supply_chain_data;
+
+    -- Print the results
+    DBMS_OUTPUT.PUT_LINE('Total Revenue: ' || total_revenue);
+    DBMS_OUTPUT.PUT_LINE('Average Lead Time: ' || avg_lead_time);
+    DBMS_OUTPUT.PUT_LINE('Highest Demand SKU: ' || high_demand_sku || ' with ' || high_demand_count || ' units sold');
+    DBMS_OUTPUT.PUT_LINE('Lowest Stock Level SKU: ' || low_stock_sku || ' with ' || low_stock_level || ' units in stock');
+
+    -- Close the cursor
+    CLOSE supply_chain_cursor;
+
 EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        -- Handle the case when no data is found
-        ROLLBACK TO sp_manage_employee;
-        DBMS_OUTPUT.PUT_LINE('No data found.');
-    
-    WHEN e_invalid_action THEN
-        -- Handle invalid action error
-        ROLLBACK TO sp_manage_employee;
-        DBMS_OUTPUT.PUT_LINE('Invalid action specified.');
-    
-    WHEN e_invalid_salary THEN
-        -- Handle invalid salary error
-        ROLLBACK TO sp_manage_employee;
-        DBMS_OUTPUT.PUT_LINE('Invalid salary amount provided.');
-    
     WHEN OTHERS THEN
-        -- Handle other exceptions
-        ROLLBACK TO sp_manage_employee;
-        DBMS_OUTPUT.PUT_LINE('An unexpected error occurred: ' || SQLERRM);
-    
-END manage_employee;
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        IF supply_chain_cursor%ISOPEN THEN
+            CLOSE supply_chain_cursor;
+        END IF;
+END complex_supply_chain_analysis;
 /
 """
 
@@ -270,4 +240,3 @@ try:
 except ValueError as e:
     print(e)
 
-# snowflake conection lenidi 
