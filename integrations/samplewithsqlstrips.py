@@ -1,0 +1,172 @@
+import re
+import google.generativeai as genai
+
+# Configure the Generative AI model
+genai.configure(api_key='AIzaSyAHUVD4ZzBqTOww00ES-ZNyByT4wXcmf14')
+model = genai.GenerativeModel(model_name="gemini-1.5-pro-001")
+
+# Define the initial part of the prompt for Generative AI
+initial_prompt = """
+You are a Oracle SQL, Snowflake and Python code expert.
+
+I will provide you with a Oracle Query. Please convert it to Snowflake SQL Query, adhering to the following guidelines:
+
+1. Deep Understanding:
+* Analyze the Oracle SQL query for its syntax, semantics, data types, and logical flow.
+* Understand the Snowflake Syntax, semantics, data types and logical flow.
+* Understand which component of Snowflake is supported for Oracle components.
+2. Accurate Snowflake Conversion:
+* Convert the Oracle SQL query into a Snowflake SQL query.
+* Ensure all functionalities are preserved.
+* Adjust Oracle-specific components and syntax to their Snowflake equivalents.
+* Pay attention to data types, function calls, PL/SQL constructs, and procedural elements.
+* Ensure the converted query is compatible with Snowflake’s SQL syntax and features.
+* Verify schema and table structures in Snowflake align with Oracle’s schema.
+* Convert and test functions, procedures, and other database objects.
+* Migrate user permissions and security settings as needed by making them compatible with Snowflake.
+* If the permissions require to be done in Snowflake then make sure to notify them in the form of comments.
+* If the comments are in JavaScript then use JavaScript format.
+* Adjust numeric data types for precision and scale.
+* Confirm and convert date and time functions as necessary.
+* The date and time functions should be supported in Snowflake. 
+* If the query contains SYSDATE make sure to convert it into Snowflake Supported Function.
+* Optimize queries for Snowflake’s architecture.
+* Convert Oracle’s exception handling to a Snowflake-compatible approach.
+* Ensure error messages and diagnostics are suitable for Snowflake.
+* Adapt Oracle’s transaction control commands to Snowflake’s transactional behavior.
+* Convert CONNECT BY hierarchical queries to Snowflake’s recursive CTEs if applicable.
+* Remove or convert SQL*Plus-specific commands (e.g., SPOOL, DEFINE).
+* Translate Oracle-specific functions or create custom UDFs for Snowflake.
+* Must include the return type in Snowflake SQL Query when converting the Oracle SQL Query into Snowflake for the procedures.
+* Must and should use JavaScript for procedural logic and cursor handling in Snowflake.
+* When using JavaScript return data in Variant or Varchar type based on requirement.
+* Do not return table in stored procedure as Snowflake does not support it.
+* Convert functions present in the Oracle stored procedure into Snowflake stored procedures.
+* While using JavaScript if the input Oracle query has a data type Number(a,b) format while converting use Float data type for Snowflake SQL Query.
+* Only use FLOAT instead of Number(a,b) in stored procedure creation not the normal table creation.
+* Make sure to use the Insert INTO statements correctly and it must and should follow and support Snowflake Syntax.
+* Prioritise using only JavaScript Datatypes while using JavaScript for stored procedure.
+* Make sure the procedure parameters are referred correctly in JavaScript.
+* Bind the parameters used while creating the stored procedure properly using the cursor so that we will not get the parameter_name not defined while calling the function.
+* While binding the Date datatype parameters bind using toISOString() so as to not get date not matching error when we are calling the function.
+* Make sure to use only correct datatypes while converting.
+* In the stored procedure make sure that all the components are declared correctly along with their data types so that when we call the procedure we can perform the operations without facing any errors.
+* Must and should work for all stored procedure logics.
+* Convert entire Oracle query into snowflake sql query.
+* For triggers in Oracle Query use a correct and supported mechanism when converting into Snowflake SQL Query because trigger is not supported in Snowflake.
+* Use Sequence to generate a sequence in Snowflake while converting.
+* Data must be loaded into the table correctly without fail.
+* If there are loops in Oracle convert them into Snowflake SQL loop using JavaScript inside the stored procedure rather than outside the procedure.
+* Check for any syntax, logical errors while converting the loop and give the correct query.
+* Use only FOR, While, Repeat loops while converting loop from Oracle query into Snowflake query.
+* Make sure to check the entire query and write the looping statements correctly according to Snowflake SQL.
+* The data in the loops needed to be inserted correctly.
+* Carefully check whether the components are supported in Snowflake or not while converting the code and make sure to use only supported components.
+* The converted code should only have components that are supported by Snowflake.
+* The stored procedure must be correct and work properly.
+* Use correct binding parameters while using parameter binding and for binding in the execute statement.
+* While calling the Stored Procedures in the Converted code make sure to follow Snowflake Syntax guidelines.
+* Must use correct calling method while calling the stored procedure.
+* Make sure the calling function should return the correct operation we specified and not other operations.
+* Use correct case if using JavaScript because it is case-sensitive.
+* Make sure the insert statements in Snowflake query should only follow the snowflake syntax.
+
+3. Output:
+* The output should contain only the Snowflake query.
+* The returned query should be executable in Snowflake without errors.
+* The output should be enclosed within triple quotes (""" """).
+* Print the output only once.
+* There is no need to include Oracle query in the Snowflake query even in the comments.
+* The executed code must provide the output once only instead of repeating twice
+"""
+
+def read_procedure_from_file(file_path):
+    """
+    Read the Oracle SQL procedure from a file.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            oracle_procedure = file.read()
+        return oracle_procedure
+    except FileNotFoundError:
+        print(f"Error: The file at {file_path} was not found.")
+        return None
+    except IOError as e:
+        print(f"Error reading file {file_path}: {e}")
+        return None
+
+def convert_oracle_to_snowflake_with_ai(oracle_query):
+    """
+    Convert Oracle SQL query to Snowflake SQL query using Generative AI.
+    """
+    prompt = initial_prompt + "\n" + oracle_query
+
+    try:
+        # Generate content using Generative AI
+        response = model.generate_content(prompt)
+        
+        if response.candidates and len(response.candidates) > 0:
+            content = response.candidates[0].content
+            text = content.parts[0].text
+            return text
+        else:
+            return 'No content found'
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def apply_regex_transformations(snowflake_procedure):
+    """
+    Apply regex-based transformations to the Snowflake procedure code.
+    """
+    if snowflake_procedure is None:
+        return ''
+    
+    # Apply regex transformations
+    snowflake_procedure = re.sub(r'\bVARCHAR2\b', 'VARCHAR', snowflake_procedure)
+    snowflake_procedure = re.sub(r'\bNUMBER\((\d+),(\d+)\)\b', 'FLOAT', snowflake_procedure)
+    snowflake_procedure = re.sub(r'CREATE OR REPLACE PROCEDURE\s+(\w+)\s+\((.*?)\)\s+AS', r'CREATE OR REPLACE PROCEDURE \1(\2) RETURNS STRING LANGUAGE JAVASCRIPT AS', snowflake_procedure)
+
+    # Remove unwanted ```sql``` tags
+    snowflake_procedure = snowflake_procedure.replace('```sql', '').replace('```', '')
+
+    # Add any additional regex transformations as needed
+    return snowflake_procedure
+
+def convert_oracle_procedure(file_path):
+    """
+    Integrate Generative AI and regex-based transformations for Oracle to Snowflake conversion.
+    """
+    # Step 1: Read the procedure from the file
+    oracle_procedure = read_procedure_from_file(file_path)
+    if oracle_procedure is None:
+        raise ValueError("Could not read procedure from file")
+
+    # Step 2: Use Generative AI for initial conversion
+    ai_converted_code = convert_oracle_to_snowflake_with_ai(oracle_procedure)
+    if ai_converted_code is None:
+        raise ValueError("Conversion resulted in None")
+
+    # Step 3: Apply regex-based transformations
+    final_converted_code = apply_regex_transformations(ai_converted_code)
+
+    return final_converted_code
+
+# File path to the Oracle procedure
+file_path = r"C:\Users\Lenovo\OneDrive - RandomTrees\Documents\complex.sql"
+
+# Convert Oracle procedure to Snowflake procedure
+try:
+    snowflake_procedure = convert_oracle_procedure(file_path)
+    
+    # Print the output to the console
+    print("Snowflake SQL Query:")
+    print(snowflake_procedure)
+
+    # Write the output to a file
+    with open("complex_procedure.sql", "w") as file:
+        file.write(snowflake_procedure)
+    print("Snowflake SQL Query has been written to 'snowflake_procedure.sql'.")
+
+except ValueError as e:
+    print(e)

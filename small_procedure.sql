@@ -7,21 +7,18 @@ CREATE OR REPLACE PROCEDURE add_employee (
     p_salary FLOAT,
     p_hiredate VARCHAR
 )
-RETURNS STRING
+RETURNS VARCHAR
 LANGUAGE javascript
 AS
 $$
 try {
     var sql_command = `INSERT INTO employee (employee_id, first_name, last_name, department_id, salary, hiredate) VALUES (${P_EMPLOYEE_ID}, '${P_FIRST_NAME}', '${P_LAST_NAME}', ${P_DEPARTMENT_ID}, ${P_SALARY}, '${P_HIREDATE}')`;
-  snowflake.execute(
-        {
-          sqlText: sql_command
-        }
-      );
-    return 'Successfully added employee.';
-} catch (err) {
-    return 'Error adding employee: ' + err.message;
-}
+    snowflake.execute({sqlText: sql_command});
+    return 'Successfully added employee';
+  }
+  catch (err) {
+    return 'Failed to add employee: ' + err;
+  }
 $$
 ;
 ```

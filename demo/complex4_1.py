@@ -12,6 +12,7 @@ You are a Oracle SQL, Snowflake and Python code expert.
 
 I will provide you with a Oracle Query. Please convert it to Snowflake SQL Query, adhering to the following guidelines:
 
+1. Deep Understanding:
 * Analyze the Oracle SQL query for its syntax, semantics, data types, and logical flow.
 * Understand the Snowflake Syntax, semantics, data types and logical flow.
 * Understand which component of Snowflake is supported for Oracle components.
@@ -72,7 +73,6 @@ I will provide you with a Oracle Query. Please convert it to Snowflake SQL Query
 * Use correct case if using JavaScript because it is case-sensitive.
 * Make sure to the insert statements in Snowflake query should only follow the snowflake syntax.
 
-
 3. Output:
 * The output should contain only the Snowflake query.
 * The returned query should be executable in Snowflake without errors.
@@ -129,19 +129,107 @@ def convert_oracle_procedure(oracle_procedure):
 
 # Example Oracle procedure
 oracle_procedure = """
-CREATE OR REPLACE PROCEDURE add_employee (
-    p_employee_id   IN employee.employee_id%TYPE,
-    p_first_name    IN employee.first_name%TYPE,
-    p_last_name     IN employee.last_name%TYPE,
-    p_department_id IN employee.department_id%TYPE,
-    p_salary        IN employee.salary%TYPE,
-    p_hiredate      IN employee.hiredate%TYPE
-)
-IS
+CREATE OR REPLACE PROCEDURE complex_supply_chain_analysis
+AS
+    -- Define variables to hold intermediate results
+    total_revenue NUMBER;
+    avg_lead_time NUMBER;
+    high_demand_sku VARCHAR2(50);
+    high_demand_count NUMBER := 0;  -- Initialize high_demand_count to zero
+    low_stock_sku VARCHAR2(50);
+    low_stock_level NUMBER := 9999999;  -- Initialize to a high value
+    v_product_type VARCHAR2(26);
+    v_sku VARCHAR2(26);
+    v_price NUMBER(38,16);
+    v_availability NUMBER(38,0);
+    v_number_of_products_sold NUMBER(38,0);
+    v_revenue_generated NUMBER(38,13);
+    v_customer_demographics VARCHAR2(26);
+    v_stock_levels NUMBER(38,0);
+    v_lead_times NUMBER(38,0);
+    v_order_quantities NUMBER(38,0);
+    v_shipping_times NUMBER(38,0);
+    v_shipping_carriers VARCHAR2(26);
+    v_shipping_costs NUMBER(38,16);
+    v_supplier_name VARCHAR2(26);
+    v_location VARCHAR2(26);
+    v_lead_time NUMBER(38,0);
+    v_production_volumes NUMBER(38,0);
+    v_manufacturing_lead_time NUMBER(38,0);
+    v_manufacturing_costs NUMBER(38,16);
+    v_inspection_results VARCHAR2(26);
+    v_defect_rates NUMBER(38,17);
+    v_transportation_modes VARCHAR2(26);
+    v_routes VARCHAR2(26);
+    v_costs NUMBER(38,14);
+    
+    -- Define a cursor for iteration
+    CURSOR supply_chain_cursor IS
+        SELECT PRODUCT_TYPE, SKU, PRICE, AVAILABILITY, NUMBER_OF_PRODUCTS_SOLD, REVENUE_GENERATED,
+               CUSTOMER_DEMOGRAPHICS, STOCK_LEVELS, LEAD_TIMES, ORDER_QUANTITIES, SHIPPING_TIMES,
+               SHIPPING_CARRIERS, SHIPPING_COSTS, SUPPLIER_NAME, LOCATION, LEAD_TIME, PRODUCTION_VOLUMES,
+               MANUFACTURING_LEAD_TIME, MANUFACTURING_COSTS, INSPECTION_RESULTS, DEFECT_RATES, 
+               TRANSPORTATION_MODES, ROUTES, COSTS
+        FROM supply_chain_data;
+
 BEGIN
-    INSERT INTO employee (employee_id, first_name, last_name, department_id, salary, hiredate)
-    VALUES (p_employee_id, p_first_name, p_last_name, p_department_id, p_salary, p_hiredate);
-END add_employee;
+    -- Initialize variables
+    total_revenue := 0;
+    avg_lead_time := 0;
+
+    -- Open the cursor
+    OPEN supply_chain_cursor;
+
+    LOOP
+        FETCH supply_chain_cursor INTO v_product_type, v_sku, v_price, v_availability, v_number_of_products_sold, v_revenue_generated,
+                                       v_customer_demographics, v_stock_levels, v_lead_times, v_order_quantities, v_shipping_times,
+                                       v_shipping_carriers, v_shipping_costs, v_supplier_name, v_location, v_lead_time, v_production_volumes,
+                                       v_manufacturing_lead_time, v_manufacturing_costs, v_inspection_results, v_defect_rates,
+                                       v_transportation_modes, v_routes, v_costs;
+        
+        EXIT WHEN supply_chain_cursor%NOTFOUND;
+
+        -- Complex calculations
+        total_revenue := total_revenue + v_revenue_generated;
+        avg_lead_time := avg_lead_time + v_lead_times;
+
+        -- Example of conditional logic and data manipulation
+        IF v_number_of_products_sold > high_demand_count THEN
+            high_demand_sku := v_sku;
+            high_demand_count := v_number_of_products_sold;
+        END IF;
+
+        IF v_stock_levels < low_stock_level THEN
+            low_stock_sku := v_sku;
+            low_stock_level := v_stock_levels;
+        END IF;
+
+        -- Additional complex logic can be added here
+
+    END LOOP;
+
+    -- Final calculations
+    SELECT avg_lead_time / COUNT(*)
+    INTO avg_lead_time
+    FROM supply_chain_data;
+
+    -- Print the results
+    DBMS_OUTPUT.PUT_LINE('Total Revenue: ' || total_revenue);
+    DBMS_OUTPUT.PUT_LINE('Average Lead Time: ' || avg_lead_time);
+    DBMS_OUTPUT.PUT_LINE('Highest Demand SKU: ' || high_demand_sku || ' with ' || high_demand_count || ' units sold');
+    DBMS_OUTPUT.PUT_LINE('Lowest Stock Level SKU: ' || low_stock_sku || ' with ' || low_stock_level || ' units in stock');
+
+    -- Close the cursor
+    CLOSE supply_chain_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+        IF supply_chain_cursor%ISOPEN THEN
+            CLOSE supply_chain_cursor;
+        END IF;
+END complex_supply_chain_analysis;
+/
 """
 
 # Convert Oracle procedure to Snowflake procedure
@@ -152,20 +240,3 @@ try:
 except ValueError as e:
     print(e)
 
-# AFTER THE PROMPT
-
-# Convert Oracle procedure to Snowflake procedure
-try:
-    snowflake_procedure = convert_oracle_procedure(oracle_procedure)
-    
-    # Print the output to the console
-    print("Snowflake SQL Query:")
-    print(snowflake_procedure)
-    
-    # Write the output to a file
-    with open("snowflake_procedure.sql", "w") as file:
-        file.write(snowflake_procedure)
-    print("Snowflake SQL Query has been written to 'snowflake_procedure.sql'.")
-
-except ValueError as e:
-    print(e)
